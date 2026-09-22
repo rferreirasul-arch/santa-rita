@@ -130,6 +130,8 @@ input, select, textarea {
   border-radius: 10px; padding: 12px 12px; min-height: 48px; font-size: 1rem;
 }
 textarea { resize: vertical; min-height: 84px; }
+input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; text-align: left; }
+input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: #fff; }
 input.erro { border-color: var(--perda); background: #fff5f4; }
