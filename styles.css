@@ -52,6 +52,8 @@ code { background: #0000000f; padding: 1px 5px; border-radius: 4px; }
 }
 .credito { position: absolute; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); font-size: .72rem; opacity: .75; }
 .login-card { text-align: center; max-width: 360px; width: 100%; }
+.login-sobre { margin-top: 28px; font-size: .85rem; opacity: .85; line-height: 1.5; }
+.login-sobre a { color: #fff; font-weight: 600; }
 .login-logo { width: 150px; height: auto; filter: drop-shadow(0 2px 8px rgba(0,0,0,.35)); }
 .login-sub { font-family: var(--serif); font-size: 1.2rem; margin: 18px 0 28px; opacity: .95; }
 .gbtn { display: flex; justify-content: center; min-height: 44px; }
