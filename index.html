@@ -86,6 +86,18 @@
             <small id="dica-pai" class="dica"></small>
           </label>
 
+          <label class="field">
+            <span>Gestação da última IA <small>(dias)</small></span>
+            <input type="number" name="gest_ult" placeholder="Calculada ao digitar a mãe" inputmode="numeric" min="0" max="400">
+          </label>
+          <div class="field">
+            <span>Gêmeos?</span>
+            <div class="seg seg-2" role="radiogroup" id="seg-gemeo">
+              <button type="button" data-v="Não" class="on">Não</button>
+              <button type="button" data-v="Sim">Sim</button>
+            </div>
+          </div>
+
           <div class="field">
             <span>Sexo do terneiro</span>
             <div class="seg" role="radiogroup" id="seg-sexo">
@@ -117,9 +129,31 @@
             </div>
           </label>
 
+          <fieldset id="bloco-gemeo" class="gemeo full" hidden>
+            <legend>2º terneiro</legend>
+            <div class="grid">
+              <label class="field">
+                <span>Brinco do 2º terneiro <small>(opcional)</small></span>
+                <div class="campo-brinco">
+                  <input type="text" name="brinco2" placeholder="Se já identificado" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+                  <button type="button" class="btn-teclado" data-alvo="brinco2" aria-label="Trocar para letras">ABC</button>
+                </div>
+              </label>
+              <div class="field">
+                <span>Sexo do 2º terneiro</span>
+                <div class="seg" role="radiogroup" id="seg-sexo2">
+                  <button type="button" data-v="Fêmea">Fêmea</button>
+                  <button type="button" data-v="Macho">Macho</button>
+                  <button type="button" data-v="Não sei" class="on">Não sei</button>
+                </div>
+              </div>
+            </div>
+            <p class="muted">Serão salvas duas linhas, uma para cada terneiro, com os mesmos dados do parto.</p>
+          </fieldset>
+
           <label class="field full">
             <span>Observações <small>(opcional)</small></span>
-            <textarea name="obs" rows="3" placeholder="Parto, saúde, gêmeos, qualquer detalhe…"></textarea>
+            <textarea name="obs" rows="3" placeholder="Parto, saúde, qualquer detalhe…"></textarea>
           </label>
         </div>
 

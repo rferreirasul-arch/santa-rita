@@ -147,6 +147,11 @@ input.erro { border-color: var(--perda); background: #fff5f4; }
 .dica { color: var(--primary) !important; font-size: .88rem; min-height: 1em; }
 
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--field); border-radius: 10px; padding: 3px; gap: 3px; min-height: 48px; }
+.seg-2 { grid-template-columns: repeat(2, 1fr); }
+.gemeo { border: 1px dashed var(--primary); border-radius: 12px; padding: 12px 14px 4px; margin: 0; background: #f5f8f9; }
+.gemeo legend { font-weight: 700; color: var(--primary); padding: 0 6px; }
+.gemeo .muted { margin: 10px 0 8px; }
+.badge.gem { background: #e3edf1; color: var(--primary); }
 .seg button { border: 0; background: transparent; border-radius: 8px; font-weight: 600; color: var(--muted); }
 .seg button.on { background: var(--primary); color: #fff; }
 

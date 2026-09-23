@@ -5,7 +5,7 @@
  * rode a função "configurar" uma vez e publique como App da Web (veja o LEIA-ME.md).
  */
 
-const CLIENT_ID = "COLE_AQUI_O_ID_DO_CLIENTE.apps.googleusercontent.com";
+const CLIENT_ID = "997988874349-65tdu4nmrtj1p4sgg291ftg4b1dfna7i.apps.googleusercontent.com";
 
 const ABA_REGISTROS = "Nascimentos";
 const ABA_USUARIOS = "Usuarios";
@@ -14,11 +14,15 @@ const ABA_REPRODUCAO = "Reproducao";
 const COLUNAS = [
   "id", "data", "mae", "pai", "sexo", "situacao", "peso", "brinco", "gestacao", "obs",
   "registrado_por", "alterado_por", "criado_em", "atualizado_em", "sincronizado_em", "excluido",
+  "gemeo", "gest_ult",
 ];
 const CABECALHO = [
   "ID", "Data", "Mãe", "Pai", "Sexo", "Situação", "Peso (kg)", "Brinco terneiro", "Gestação (dias)", "Observações",
   "Registrado por", "Alterado por", "Criado em", "Atualizado em", "Sincronizado em", "Excluído",
+  "Gêmeo", "Gestação última IA (dias)",
 ];
+// Aba Reproducao: uma linha por vaca
+const CABECALHO_REPRODUCAO = ["Mãe", "Data IATF", "Touro IATF", "Toque IATF", "Data última IA", "Touro última IA"];
 const COLUNAS_TEXTO = ["id", "mae", "pai", "brinco", "criado_em", "atualizado_em"];
 
 // ---------------------------------------------------------------------
@@ -46,9 +50,10 @@ function configurar() {
 
   const rep = ss.getSheetByName(ABA_REPRODUCAO) || ss.insertSheet(ABA_REPRODUCAO);
   if (rep.getLastRow() === 0) {
-    rep.getRange(1, 1, 1, 4).setValues([["Mãe", "Data da IA/IATF", "Touro", "Tipo (IA/IATF/Repasse)"]]).setFontWeight("bold");
+    rep.getRange(1, 1, 1, CABECALHO_REPRODUCAO.length).setValues([CABECALHO_REPRODUCAO]).setFontWeight("bold");
     rep.getRange("A:A").setNumberFormat("@");
     rep.getRange("B:B").setNumberFormat("dd/mm/yyyy");
+    rep.getRange("E:E").setNumberFormat("dd/mm/yyyy");
     rep.setFrozenRows(1);
   }
   const vazia = ss.getSheetByName("Página1") || ss.getSheetByName("Sheet1");
@@ -124,6 +129,7 @@ function sincronizar_(recebidos, usuario) {
   lock.waitLock(30000);
   try {
     const sh = SpreadsheetApp.getActive().getSheetByName(ABA_REGISTROS);
+    garantirCabecalho_(sh);
     const base = lerRegistros_(sh);
     const agora = new Date().toISOString();
     const novos = [];
@@ -159,6 +165,12 @@ function sincronizar_(recebidos, usuario) {
   }
 }
 
+// Acrescenta colunas novas (ex.: Gêmeo) no cabeçalho de planilhas criadas antes delas
+function garantirCabecalho_(sh) {
+  const atual = sh.getRange(1, 1, 1, CABECALHO.length).getValues()[0];
+  if (atual.join("|") !== CABECALHO.join("|")) sh.getRange(1, 1, 1, CABECALHO.length).setValues([CABECALHO]);
+}
+
 function lerRegistros_(sh) {
   const lista = [];
   const indice = {};
@@ -188,6 +200,7 @@ function paraLinha_(r) {
       return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
     }
     if (c === "excluido") return v === true;
+    if (c === "gemeo") return v === "Sim" ? "Sim" : "Não";
     return v === undefined || v === null ? "" : v;
   });
 }
@@ -196,15 +209,18 @@ function lerReproducao_() {
   const sh = SpreadsheetApp.getActive().getSheetByName(ABA_REPRODUCAO);
   if (!sh || sh.getLastRow() < 2) return [];
   const tz = Session.getScriptTimeZone();
-  return sh.getRange(2, 1, sh.getLastRow() - 1, 4).getValues()
-    .filter((l) => l[0] !== "" && l[1] !== "")
+  const data = (v) => v instanceof Date
+    ? Utilities.formatDate(v, tz, "yyyy-MM-dd")
+    : String(v).trim().replace(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, (_, d, m, a) => a + "-" + ("0" + m).slice(-2) + "-" + ("0" + d).slice(-2));
+  return sh.getRange(2, 1, sh.getLastRow() - 1, CABECALHO_REPRODUCAO.length).getValues()
+    .filter((l) => String(l[0]).trim() !== "" && (l[1] !== "" || l[4] !== ""))
     .map((l) => ({
       mae: String(l[0]).trim(),
-      data_ia: l[1] instanceof Date
-        ? Utilities.formatDate(l[1], tz, "yyyy-MM-dd")
-        : String(l[1]).trim().replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, "$3-$2-$1"),
-      touro: String(l[2]).trim(),
-      tipo: String(l[3]).trim(),
+      data_iatf: l[1] === "" ? "" : data(l[1]),
+      touro_iatf: String(l[2]).trim(),
+      toque_iatf: String(l[3]).trim(),
+      data_ult: l[4] === "" ? "" : data(l[4]),
+      touro_ult: String(l[5]).trim(),
     }));
 }
 

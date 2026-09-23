@@ -5,7 +5,6 @@ const DEMO = !CFG.API_URL || !CFG.CLIENT_ID;
 const PERDAS = ["Natimorto", "Morreu após o parto", "Aborto"];
 const VIVOS = ["Vivo", "Enxertado"];
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const GESTACAO_MIN = 240, GESTACAO_MAX = 320;
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -243,32 +242,50 @@ async function atualizarStatus() {
 // =====================================================================
 const form = () => $("#form");
 const campo = (nome) => form().elements[nome];
-let sexo = "Não sei";
-
-function marcarSexo(v) {
-  sexo = v;
-  $$("#seg-sexo button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+// Botões de escolha (sexo, gêmeos): o valor fica guardado no próprio grupo
+const valorSeg = (id) => $(`#${id}`).dataset.valor || $(`#${id} .on`)?.dataset.v || "";
+function marcarSeg(id, v) {
+  $(`#${id}`).dataset.valor = v;
+  $$(`#${id} button`).forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+  if (id === "seg-gemeo") $("#bloco-gemeo").hidden = !(v === "Sim" && !gemeoJaSalvo());
 }
+// Ao editar um terneiro que já é gêmeo, o 2º já existe como outro registro
+const gemeoJaSalvo = () => editId && registros.find((r) => r.id === editId)?.gemeo === "Sim";
 
+// Regra do pai, a partir da aba Reproducao (uma linha por vaca):
+// toque IATF prenha → touro da IATF; senão, houve outra IA → touro da última IA;
+// senão, IATF vazia → monta natural; sem toque registrado → touro da única IA.
 function sugestaoReproducao(mae, dataNasc) {
   const m = normId(mae);
   if (!m || !dataNasc) return null;
-  return reproducao
-    .filter((r) => normId(r.mae) === m && r.data_ia)
-    .map((r) => ({ ...r, dias: diasEntre(r.data_ia, dataNasc) }))
-    .filter((r) => r.dias >= GESTACAO_MIN && r.dias <= GESTACAO_MAX)
-    .sort((a, b) => a.dias - b.dias)[0] || null;
+  const r = reproducao.find((x) => normId(x.mae) === m);
+  if (!r) return null;
+  const iatf = r.data_iatf ?? r.data_ia ?? "";
+  const touroIatf = r.touro_iatf ?? r.touro ?? "";
+  const ult = r.data_ult || iatf;
+  const touroUlt = r.touro_ult || touroIatf;
+  const toque = String(r.toque_iatf || "").trim().toLowerCase();
+  const gestUlt = ult ? diasEntre(ult, dataNasc) : "";
+  if (gestUlt !== "" && (gestUlt < 100 || gestUlt > 400)) return null; // IA de outra safra
+
+  let s;
+  if (toque === "prenha" && iatf) s = { pai: touroIatf, base: iatf, origem: `IATF ${fmtData(iatf)} (toque prenha)` };
+  else if (ult && ult !== iatf) s = { pai: touroUlt, base: ult, origem: `Repasse: IA ${fmtData(ult)}${toque === "vazia" ? " (IATF vazia)" : ""}` };
+  else if (toque === "vazia") s = { pai: "Monta natural", base: "", origem: `IATF ${fmtData(iatf)} com ${touroIatf} deu vazia` };
+  else s = { pai: touroUlt, base: ult, origem: `IA ${fmtData(ult)} (sem toque registrado)` };
+  return { ...s, gestacao: s.base ? diasEntre(s.base, dataNasc) : "", gestUlt, dataUlt: ult, touroUlt };
 }
 
 function aoMudarMae() {
   const sug = sugestaoReproducao(campo("mae").value, campo("data").value);
   const pai = campo("pai");
-  const dica = $("#dica-pai");
-  form().dataset.gestacao = sug ? sug.dias : "";
-  if (pai.dataset.manual !== "1") pai.value = sug ? sug.touro : (campo("mae").value.trim() ? "Monta natural" : "");
-  dica.textContent = sug
-    ? `${sug.tipo || "IA"} em ${fmtData(sug.data_ia)} com ${sug.touro} · ${sug.dias} dias de gestação`
-    : "";
+  const gUlt = campo("gest_ult");
+  form().dataset.gestacao = sug?.gestacao ?? "";
+  if (pai.dataset.manual !== "1") pai.value = sug ? sug.pai : (campo("mae").value.trim() ? "Monta natural" : "");
+  if (gUlt.dataset.manual !== "1") gUlt.value = sug?.gestUlt ?? "";
+  $("#dica-pai").textContent = sug
+    ? `${sug.origem}${sug.gestacao !== "" ? ` · ${sug.gestacao} dias` : ""} · última IA: ${fmtData(sug.dataUlt)} (${sug.touroUlt})`
+    : (campo("mae").value.trim() ? "Vaca sem IA registrada na aba Reproducao." : "");
   avisoDuplicado();
 }
 
@@ -278,7 +295,7 @@ function avisoDuplicado() {
   const aviso = $("#aviso");
   const anterior = ativos().find((r) => r.id !== editId && normId(r.mae) === m && Math.abs(diasEntre(r.data, data)) <= 60);
   aviso.hidden = !anterior;
-  if (anterior) aviso.textContent = `Atenção: a mãe ${anterior.mae} já tem um parto registrado em ${fmtData(anterior.data)}. Se forem gêmeos, anote nas observações.`;
+  if (anterior) aviso.textContent = `Atenção: a mãe ${anterior.mae} já tem um parto registrado em ${fmtData(anterior.data)}. Se forem gêmeos, marque "Gêmeos? Sim".`;
 }
 
 // Brincos abrem no teclado numérico; o botão ABC/123 troca para letras quando precisar
@@ -301,8 +318,11 @@ function limparForm() {
   form().reset();
   campo("data").value = hojeISO();
   campo("pai").dataset.manual = "";
+  campo("gest_ult").dataset.manual = "";
   form().dataset.gestacao = "";
-  marcarSexo("Não sei");
+  marcarSeg("seg-sexo", "Não sei");
+  marcarSeg("seg-sexo2", "Não sei");
+  marcarSeg("seg-gemeo", "Não");
   $("#dica-pai").textContent = "";
   $$(".btn-teclado").forEach((b) => modoTeclado(b, false));
   $("#aviso").hidden = true;
@@ -317,10 +337,12 @@ function editar(id) {
   if (!r) return;
   limparForm();
   editId = id;
-  for (const k of ["data", "mae", "pai", "situacao", "peso", "brinco", "obs"]) campo(k).value = r[k] ?? "";
+  for (const k of ["data", "mae", "pai", "situacao", "peso", "brinco", "gest_ult", "obs"]) campo(k).value = r[k] ?? "";
   campo("pai").dataset.manual = "1";
+  campo("gest_ult").dataset.manual = "1";
   form().dataset.gestacao = r.gestacao ?? "";
-  marcarSexo(r.sexo || "Não sei");
+  marcarSeg("seg-sexo", r.sexo || "Não sei");
+  marcarSeg("seg-gemeo", r.gemeo === "Sim" ? "Sim" : "Não");
   $("#form-titulo").textContent = `Editando parto da mãe ${r.mae}`;
   $("#btn-salvar").textContent = "Salvar alterações";
   $("#btn-cancelar").hidden = false;
@@ -350,17 +372,20 @@ async function salvar(ev) {
   const agora = new Date().toISOString();
   const antigo = editId ? registros.find((r) => r.id === editId) : null;
   const peso = campo("peso").value ? Number(String(campo("peso").value).replace(",", ".")) : "";
+  const gemeo = valorSeg("seg-gemeo");
   const rec = {
     ...(antigo || {}),
     id: editId || novoId(),
     data: campo("data").value,
     mae: campo("mae").value.trim(),
     pai: campo("pai").value.trim(),
-    sexo,
+    sexo: valorSeg("seg-sexo"),
     situacao: campo("situacao").value,
     peso,
     brinco: campo("brinco").value.trim(),
     gestacao: f.dataset.gestacao ? Number(f.dataset.gestacao) : "",
+    gest_ult: campo("gest_ult").value ? Number(campo("gest_ult").value) : "",
+    gemeo,
     obs: campo("obs").value.trim(),
     registrado_por: antigo?.registrado_por || usuario?.email || "demo",
     criado_em: antigo?.criado_em || agora,
@@ -368,9 +393,14 @@ async function salvar(ev) {
     excluido: false,
     _pendente: true,
   };
-  await db.gravar(rec);
+  // Gêmeos: uma linha por terneiro, repetindo os dados do parto (o peso é de cada um)
+  const novos = [rec];
+  if (gemeo === "Sim" && !$("#bloco-gemeo").hidden) {
+    novos.push({ ...rec, id: novoId(), sexo: valorSeg("seg-sexo2"), brinco: campo("brinco2").value.trim(), peso: "", criado_em: agora, registrado_por: usuario?.email || "demo" });
+  }
+  await db.gravarVarios(novos);
   registros = await db.todos();
-  toast(antigo ? "Alterações salvas." : `Parto da mãe ${rec.mae} registrado.`);
+  toast(antigo ? "Alterações salvas." : novos.length > 1 ? `Parto gemelar da mãe ${rec.mae} registrado (2 terneiros).` : `Parto da mãe ${rec.mae} registrado.`);
   limparForm();
   renderTudo();
   campo("mae").focus();
@@ -391,12 +421,13 @@ function cartao(r) {
     r.brinco ? `Brinco ${esc(r.brinco)}` : "",
     r.pai ? `Pai: ${esc(r.pai)}` : "",
     r.gestacao ? `Gestação: ${r.gestacao}d` : "",
+    r.gest_ult && r.gest_ult !== r.gestacao ? `Últ. IA: ${r.gest_ult}d` : "",
   ].filter(Boolean);
   return `
     <article class="reg ${tipo}">
       <div class="reg-data"><b>${d}/${m}</b><span>${a}</span></div>
       <div>
-        <div class="reg-mae">Mãe ${esc(r.mae)} <span class="badge ${tipo}">${esc(r.situacao)}</span></div>
+        <div class="reg-mae">Mãe ${esc(r.mae)} <span class="badge ${tipo}">${esc(r.situacao)}</span>${r.gemeo === "Sim" ? `<span class="badge gem">Gêmeo</span>` : ""}</div>
         <div class="reg-info">${info.map((i) => `<span>${i}</span>`).join("")}</div>
         ${r.obs ? `<div class="reg-obs">${esc(r.obs)}</div>` : ""}
       </div>
@@ -452,8 +483,8 @@ function preencherAnos() {
 }
 
 function baixarCsv() {
-  const cols = ["data", "mae", "pai", "sexo", "situacao", "peso", "brinco", "gestacao", "obs", "registrado_por"];
-  const cab = ["Data", "Mãe", "Pai", "Sexo", "Situação", "Peso (kg)", "Brinco terneiro", "Gestação (dias)", "Observações", "Registrado por"];
+  const cols = ["data", "mae", "pai", "sexo", "situacao", "peso", "brinco", "gemeo", "gestacao", "gest_ult", "obs", "registrado_por"];
+  const cab = ["Data", "Mãe", "Pai", "Sexo", "Situação", "Peso (kg)", "Brinco terneiro", "Gêmeo", "Gestação (dias)", "Gestação última IA (dias)", "Observações", "Registrado por"];
   const cel = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const linhas = filtrados().map((r) => cols.map((c) => cel(c === "data" ? fmtData(r.data) : c === "peso" && r.peso !== "" ? String(r.peso).replace(".", ",") : r[c])).join(";"));
   const blob = new Blob(["﻿" + [cab.join(";"), ...linhas].join("\r\n")], { type: "text/csv;charset=utf-8" });
@@ -482,6 +513,7 @@ function renderPainel() {
     kpi(vivos.filter((r) => r.sexo === "Macho").length, "Machos", "vivos"),
     kpi(perdas.length, "Perdas", pct(perdas.length, base.length), "perda"),
     kpi(pesoMedio ? fmtNum(pesoMedio, 1) : "–", "Peso médio (kg)", comPeso.length ? `${comPeso.length} pesados` : ""),
+    kpi(base.filter((r) => r.gemeo === "Sim").length, "Gêmeos", "terneiros"),
   ].join("");
 
   const porMes = Array(12).fill(0);
@@ -552,7 +584,9 @@ function ligarEventos() {
   campo("mae").addEventListener("input", aoMudarMae);
   campo("data").addEventListener("change", aoMudarMae);
   campo("pai").addEventListener("input", () => (campo("pai").dataset.manual = campo("pai").value ? "1" : ""));
-  $("#seg-sexo").addEventListener("click", (e) => e.target.dataset.v && marcarSexo(e.target.dataset.v));
+  ["seg-sexo", "seg-sexo2", "seg-gemeo"].forEach((id) =>
+    $(`#${id}`).addEventListener("click", (e) => e.target.dataset.v && marcarSeg(id, e.target.dataset.v)));
+  campo("gest_ult").addEventListener("input", () => (campo("gest_ult").dataset.manual = campo("gest_ult").value ? "1" : ""));
   $("#btn-cancelar").addEventListener("click", limparForm);
   $$(".btn-teclado").forEach((b) => {
     b.addEventListener("pointerdown", (e) => e.preventDefault()); // não fecha o teclado ao tocar
