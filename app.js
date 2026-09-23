@@ -393,11 +393,11 @@ async function salvar(ev) {
     excluido: false,
     _pendente: true,
   };
-  // Gêmeos: uma linha por terneiro, repetindo os dados do parto (brinco, sexo e peso são de cada um)
+  // Gêmeos: uma linha por terneiro, repetindo os dados do parto (sexo, brinco, peso e situação são de cada um)
   const novos = [rec];
   if (gemeo === "Sim" && !$("#bloco-gemeo").hidden) {
     const peso2 = campo("peso2").value ? Number(String(campo("peso2").value).replace(",", ".")) : "";
-    novos.push({ ...rec, id: novoId(), sexo: valorSeg("seg-sexo2"), brinco: campo("brinco2").value.trim(), peso: peso2, criado_em: agora, registrado_por: usuario?.email || "demo" });
+    novos.push({ ...rec, id: novoId(), sexo: valorSeg("seg-sexo2"), brinco: campo("brinco2").value.trim(), peso: peso2, situacao: campo("situacao2").value, criado_em: agora, registrado_por: usuario?.email || "demo" });
   }
   await db.gravarVarios(novos);
   registros = await db.todos();
