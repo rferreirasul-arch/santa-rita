@@ -253,8 +253,8 @@ function marcarSeg(id, v) {
 const gemeoJaSalvo = () => editId && registros.find((r) => r.id === editId)?.gemeo === "Sim";
 
 // Regra do pai, a partir da aba Reproducao (uma linha por vaca):
-// toque IATF prenha → touro da IATF; senão, houve outra IA → touro da última IA;
-// senão, IATF vazia → monta natural; sem toque registrado → touro da única IA.
+// toque IATF prenha → touro da IATF; nos demais casos → touro da última IA
+// (repasse, IATF vazia sem outra IA ou sem toque registrado).
 function sugestaoReproducao(mae, dataNasc) {
   const m = normId(mae);
   if (!m || !dataNasc) return null;
@@ -271,7 +271,7 @@ function sugestaoReproducao(mae, dataNasc) {
   let s;
   if (toque === "prenha" && iatf) s = { pai: touroIatf, base: iatf, origem: `IATF ${fmtData(iatf)} (toque prenha)` };
   else if (ult && ult !== iatf) s = { pai: touroUlt, base: ult, origem: `Repasse: IA ${fmtData(ult)}${toque === "vazia" ? " (IATF vazia)" : ""}` };
-  else if (toque === "vazia") s = { pai: "Monta natural", base: "", origem: `IATF ${fmtData(iatf)} com ${touroIatf} deu vazia` };
+  else if (toque === "vazia") s = { pai: touroIatf, base: iatf, origem: `IATF ${fmtData(iatf)} deu vazia, sem outra IA: confira se foi monta natural` };
   else s = { pai: touroUlt, base: ult, origem: `IA ${fmtData(ult)} (sem toque registrado)` };
   return { ...s, gestacao: s.base ? diasEntre(s.base, dataNasc) : "", gestUlt, dataUlt: ult, touroUlt };
 }
@@ -393,10 +393,11 @@ async function salvar(ev) {
     excluido: false,
     _pendente: true,
   };
-  // Gêmeos: uma linha por terneiro, repetindo os dados do parto (o peso é de cada um)
+  // Gêmeos: uma linha por terneiro, repetindo os dados do parto (brinco, sexo e peso são de cada um)
   const novos = [rec];
   if (gemeo === "Sim" && !$("#bloco-gemeo").hidden) {
-    novos.push({ ...rec, id: novoId(), sexo: valorSeg("seg-sexo2"), brinco: campo("brinco2").value.trim(), peso: "", criado_em: agora, registrado_por: usuario?.email || "demo" });
+    const peso2 = campo("peso2").value ? Number(String(campo("peso2").value).replace(",", ".")) : "";
+    novos.push({ ...rec, id: novoId(), sexo: valorSeg("seg-sexo2"), brinco: campo("brinco2").value.trim(), peso: peso2, criado_em: agora, registrado_por: usuario?.email || "demo" });
   }
   await db.gravarVarios(novos);
   registros = await db.todos();

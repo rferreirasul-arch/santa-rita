@@ -80,7 +80,7 @@
           </label>
 
           <label class="field full">
-            <span>Pai <small>(sugerido pelo registro de IA/IATF: edite se for monta natural)</small></span>
+            <span>Pai <small>(sugerido pela IATF/última IA: edite se for monta natural)</small></span>
             <input type="text" name="pai" placeholder="Preenchido ao digitar a mãe" list="lista-pais">
             <datalist id="lista-pais"></datalist>
             <small id="dica-pai" class="dica"></small>
@@ -138,6 +138,10 @@
                   <input type="text" name="brinco2" placeholder="Se já identificado" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
                   <button type="button" class="btn-teclado" data-alvo="brinco2" aria-label="Trocar para letras">ABC</button>
                 </div>
+              </label>
+              <label class="field">
+                <span>Peso do 2º terneiro <small>(kg, opcional)</small></span>
+                <input type="number" name="peso2" placeholder="Ex.: 30" inputmode="decimal" min="0" max="90" step="0.1">
               </label>
               <div class="field">
                 <span>Sexo do 2º terneiro</span>
