@@ -137,6 +137,13 @@ input[type="date"]::-webkit-date-and-time-value { text-align: left; }
 select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); background: #fff; }
 input.erro { border-color: var(--perda); background: #fff5f4; }
+.campo-brinco { position: relative; }
+.campo-brinco input { padding-right: 70px; }
+.btn-teclado {
+  position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+  min-width: 54px; height: 34px; border: 1px solid var(--line); border-radius: 8px;
+  background: #fff; color: var(--primary); font-weight: 700; font-size: .85rem;
+}
 .dica { color: var(--primary) !important; font-size: .88rem; min-height: 1em; }
 
 .seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--field); border-radius: 10px; padding: 3px; gap: 3px; min-height: 48px; }

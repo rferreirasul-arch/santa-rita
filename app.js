@@ -281,6 +281,21 @@ function avisoDuplicado() {
   if (anterior) aviso.textContent = `Atenção: a mãe ${anterior.mae} já tem um parto registrado em ${fmtData(anterior.data)}. Se forem gêmeos, anote nas observações.`;
 }
 
+// Brincos abrem no teclado numérico; o botão ABC/123 troca para letras quando precisar
+function modoTeclado(btn, letras) {
+  const inp = campo(btn.dataset.alvo);
+  inp.inputMode = letras ? "text" : "numeric";
+  btn.textContent = letras ? "123" : "ABC";
+  btn.setAttribute("aria-label", letras ? "Trocar para números" : "Trocar para letras");
+}
+
+function alternarTeclado(btn) {
+  const inp = campo(btn.dataset.alvo);
+  modoTeclado(btn, inp.inputMode !== "text");
+  inp.blur();
+  inp.focus(); // reabre o teclado já no novo modo
+}
+
 function limparForm() {
   editId = null;
   form().reset();
@@ -289,6 +304,7 @@ function limparForm() {
   form().dataset.gestacao = "";
   marcarSexo("Não sei");
   $("#dica-pai").textContent = "";
+  $$(".btn-teclado").forEach((b) => modoTeclado(b, false));
   $("#aviso").hidden = true;
   $("#form-titulo").textContent = "Registrar nascimento";
   $("#btn-salvar").textContent = "Salvar registro";
@@ -431,8 +447,6 @@ function preencherAnos() {
   $("#f-ano").value = anos.includes(atualF) ? atualF : "";
   $("#p-ano").value = anos.includes(atualP) || atualP === "" && $("#p-ano").dataset.escolhido ? atualP : (anos[0] || "");
 
-  const maes = [...new Set(ativos().map((r) => r.mae).concat(reproducao.map((r) => r.mae)))].slice(0, 2000);
-  $("#lista-maes").innerHTML = maes.map((m) => `<option value="${esc(m)}">`).join("");
   const pais = [...new Set(ativos().map((r) => r.pai).concat(reproducao.map((r) => r.touro)).filter(Boolean))];
   $("#lista-pais").innerHTML = pais.map((p) => `<option value="${esc(p)}">`).join("");
 }
@@ -540,6 +554,10 @@ function ligarEventos() {
   campo("pai").addEventListener("input", () => (campo("pai").dataset.manual = campo("pai").value ? "1" : ""));
   $("#seg-sexo").addEventListener("click", (e) => e.target.dataset.v && marcarSexo(e.target.dataset.v));
   $("#btn-cancelar").addEventListener("click", limparForm);
+  $$(".btn-teclado").forEach((b) => {
+    b.addEventListener("pointerdown", (e) => e.preventDefault()); // não fecha o teclado ao tocar
+    b.addEventListener("click", () => alternarTeclado(b));
+  });
   $("#btn-sync").addEventListener("click", () => sincronizar(true));
   $("#btn-sair").addEventListener("click", sair);
   $("#btn-csv").addEventListener("click", baixarCsv);

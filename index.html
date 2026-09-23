@@ -73,8 +73,10 @@
           </label>
           <label class="field">
             <span>Brinco / ID da mãe</span>
-            <input type="text" name="mae" placeholder="Ex.: 214 ou Mimosa" required inputmode="text" list="lista-maes">
-            <datalist id="lista-maes"></datalist>
+            <div class="campo-brinco">
+              <input type="text" name="mae" placeholder="Ex.: 214" required inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+              <button type="button" class="btn-teclado" data-alvo="mae" aria-label="Trocar para letras">ABC</button>
+            </div>
           </label>
 
           <label class="field full">
@@ -109,7 +111,10 @@
           </label>
           <label class="field">
             <span>Brinco do terneiro <small>(opcional)</small></span>
-            <input type="text" name="brinco" placeholder="Se já identificado">
+            <div class="campo-brinco">
+              <input type="text" name="brinco" placeholder="Se já identificado" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false">
+              <button type="button" class="btn-teclado" data-alvo="brinco" aria-label="Trocar para letras">ABC</button>
+            </div>
           </label>
 
           <label class="field full">
