@@ -648,6 +648,13 @@ function ligarEventos() {
     if (b?.dataset.editar) editar(b.dataset.editar);
     if (b?.dataset.excluir) excluir(b.dataset.excluir);
   });
+  // iPhone: com o teclado aberto a barra de abas "sobe" junto e cobre os campos.
+  // Escondemos a barra enquanto algum campo está em edição.
+  const ehCampo = (el) => el?.matches?.("input, textarea, select");
+  document.addEventListener("focusin", (e) => { if (ehCampo(e.target)) document.body.classList.add("digitando"); });
+  document.addEventListener("focusout", () => setTimeout(() => {
+    if (!ehCampo(document.activeElement)) document.body.classList.remove("digitando");
+  }, 150));
   window.addEventListener("online", () => sincronizar());
   window.addEventListener("offline", atualizarStatus);
   document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && sincronizar());
