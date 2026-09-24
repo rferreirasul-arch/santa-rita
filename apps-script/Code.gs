@@ -263,9 +263,13 @@ function lerRegistros_(sh) {
   return { lista: lista, indice: indice };
 }
 
+// Monta natural: não há como saber o tempo de gestação, então a coluna fica em branco
+const ehMontaNatural_ = (pai) => /^\s*monta\s+natural\s*$/i.test(String(pai || ""));
+
 function paraLinha_(r) {
   return COLUNAS.map((c) => {
     const v = r[c];
+    if (c === "gestacao" && ehMontaNatural_(r.pai)) return "";
     if (c === "data" && v) {
       const p = String(v).split("-");
       return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
