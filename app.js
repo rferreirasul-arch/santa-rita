@@ -76,44 +76,49 @@ function toast(msg, ms = 3200) {
 }
 
 // =====================================================================
-// Login com conta Google
+// Login: Google só na primeira vez em cada aparelho. A planilha devolve uma
+// chave permanente deste aparelho, usada em todos os envios seguintes.
+// O administrador bloqueia um aparelho na aba "Aparelhos" (Ativo = NÃO).
 // =====================================================================
-const tokenValido = () => usuario?.token && usuario.exp - Date.now() > 60_000;
-let esperandoToken = [];
+const aparelhoLiberado = () => !!usuario?.chave;
 
 function lerJwt(token) {
   const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
   return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
 }
 
+function nomeAparelho() {
+  const ua = navigator.userAgent;
+  const tipo = /iPhone/.test(ua) ? "iPhone" : /iPad/.test(ua) ? "iPad" : /Android/.test(ua) ? "Android"
+    : /Macintosh/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "Outro";
+  const nav = /CriOS|Chrome/.test(ua) ? "Chrome" : /Safari/.test(ua) ? "Safari" : "navegador";
+  const instalado = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  return `${tipo} · ${instalado ? "app instalado" : nav}`;
+}
+
+function guardarUsuario() {
+  localStorage.setItem("fsr_usuario", JSON.stringify(usuario));
+}
+
 async function aoReceberCredencial(resp) {
   const info = lerJwt(resp.credential);
   const primeiroAcesso = !usuario;
-  usuario = {
-    email: info.email.toLowerCase(),
-    nome: info.given_name || info.name || info.email,
-    token: resp.credential,
-    exp: info.exp * 1000,
-  };
-  esperandoToken.splice(0).forEach((fim) => fim(usuario.token));
-  $("#relogin").hidden = true;
-
-  if (!primeiroAcesso) {
-    localStorage.setItem("fsr_usuario", JSON.stringify(usuario));
-    return;
-  }
-  // Primeiro acesso: confere na planilha se o e-mail está autorizado antes de entrar
-  $("#login-msg").textContent = "Verificando autorização…";
+  if (primeiroAcesso) $("#login-msg").textContent = "Liberando este aparelho…";
   try {
-    await chamarApi({ action: "ping", token: usuario.token });
-    localStorage.setItem("fsr_usuario", JSON.stringify(usuario));
+    const r = await chamarApi({ action: "registrar", token: resp.credential, aparelho: nomeAparelho() });
+    usuario = { email: r.usuario.email, nome: info.given_name || r.usuario.nome, chave: r.chave };
+    guardarUsuario();
+    $("#relogin").hidden = true;
     $("#login-msg").textContent = "";
     entrarNoApp();
+    mostrarQuem();
     sincronizar();
   } catch (e) {
-    $("#login-msg").textContent = e.message;
-    usuario = null;
-    google.accounts.id.disableAutoSelect();
+    if (primeiroAcesso) {
+      $("#login-msg").textContent = e.message;
+      usuario = null;
+      google.accounts.id.disableAutoSelect();
+    } else toast(e.message, 6000);
   }
 }
 
@@ -129,27 +134,16 @@ window.onGoogleLibraryLoad = () => {
   const opcoes = { theme: "filled_blue", size: "large", text: "signin_with", shape: "pill", locale: "pt-BR" };
   google.accounts.id.renderButton($("#gbtn"), opcoes);
   google.accounts.id.renderButton($("#relogin-btn"), { ...opcoes, size: "medium" });
-  if (!usuario) google.accounts.id.prompt();
+  if (!aparelhoLiberado() && navigator.onLine) google.accounts.id.prompt();
 };
 
-function obterToken() {
-  if (tokenValido()) return Promise.resolve(usuario.token);
-  if (!window.google?.accounts?.id) return Promise.resolve(null);
-  return new Promise((ok) => {
-    let feito = false;
-    const fim = (t) => { if (!feito) { feito = true; ok(t); } };
-    esperandoToken.push(fim);
-    google.accounts.id.prompt();
-    // Se o Google não renovar sozinho, pede para a pessoa clicar em "Entrar"
-    setTimeout(() => {
-      if (!tokenValido()) { $("#relogin").hidden = false; fim(null); }
-    }, 8000);
-  });
-}
-
-function sair() {
+async function sair() {
   const n = pendentes().length;
   if (n && !confirm(`Há ${n} registro(s) ainda não enviados à planilha. Se sair agora, eles continuam guardados neste aparelho e serão enviados no próximo login. Sair mesmo assim?`)) return;
+  // Avisa a planilha para desativar a chave deste aparelho (se houver sinal)
+  if (usuario?.chave && navigator.onLine) {
+    await Promise.race([chamarApi({ action: "sair", chave: usuario.chave }).catch(() => {}), new Promise((ok) => setTimeout(ok, 4000))]);
+  }
   localStorage.removeItem("fsr_usuario");
   window.google?.accounts?.id?.disableAutoSelect();
   location.reload();
@@ -183,11 +177,16 @@ async function sincronizar(manual = false) {
   sincronizando = true;
   atualizarStatus();
   try {
-    const token = await obterToken();
-    if (!token) { if (manual) toast("Entre com sua conta Google para sincronizar."); return; }
+    if (!aparelhoLiberado()) {
+      // Aparelho de antes desta versão (ou bloqueado): falta só um login Google
+      $("#relogin").hidden = false;
+      window.google?.accounts?.id?.prompt();
+      if (manual) toast("Entre com o Google uma última vez para liberar este aparelho.");
+      return;
+    }
 
     const envio = pendentes().map(semCampoLocal);
-    const resp = await chamarApi({ action: "sync", token, registros: envio });
+    const resp = await chamarApi({ action: "sync", chave: usuario.chave, registros: envio });
 
     // Junta o que veio da planilha com o que está no aparelho.
     // Um registro editado aqui durante o envio (mais novo) continua pendente.
@@ -211,7 +210,12 @@ async function sincronizar(manual = false) {
     renderTudo();
     if (manual || envio.length) toast(envio.length ? `${envio.length} registro(s) enviado(s) à planilha.` : "Tudo sincronizado.");
   } catch (e) {
-    if (e.codigo === "AUTH") { usuario.exp = 0; $("#relogin").hidden = false; }
+    if (e.codigo === "APARELHO") {
+      usuario.chave = "";
+      guardarUsuario();
+      $("#relogin").hidden = false;
+      toast(e.message, 6000);
+    }
     else if (e.codigo === "NEGADO") toast(e.message, 6000);
     else if (manual) toast("Não foi possível sincronizar agora. Tentaremos de novo automaticamente.");
     console.warn("Sincronização:", e);
@@ -232,6 +236,7 @@ async function atualizarStatus() {
     el.textContent = n ? `Sem sinal · ${n} pendente${n > 1 ? "s" : ""}` : "Sem sinal";
     return;
   }
+  if (!aparelhoLiberado()) { el.classList.add("pend"); el.textContent = n ? `${n} pendente${n > 1 ? "s" : ""} · falta login` : "Falta login"; return; }
   if (n) { el.classList.add("pend"); el.textContent = `${n} pendente${n > 1 ? "s" : ""}`; return; }
   el.classList.add("ok");
   el.textContent = "Sincronizado";
@@ -571,13 +576,17 @@ function renderTudo() {
   atualizarStatus();
 }
 
+function mostrarQuem() {
+  $("#quem").textContent = DEMO ? "Modo demonstração" : `Conectado como ${usuario.nome} (${usuario.email}) ·`;
+}
+
 function entrarNoApp() {
   if (!$("#app").hidden) return;
   $("#login").hidden = true;
   $("#app").hidden = false;
   $("#demo").hidden = !DEMO;
   $("#btn-sair").hidden = DEMO;
-  $("#quem").textContent = DEMO ? "Modo demonstração" : `Conectado como ${usuario.nome} (${usuario.email}) ·`;
+  mostrarQuem();
 }
 
 function ligarEventos() {

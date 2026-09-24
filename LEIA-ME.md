@@ -74,6 +74,7 @@ Entre com a conta Google **uma vez com internet**. Depois disso, o app abre e re
 ## Uso no dia a dia
 
 - **Autorizar alguém:** na aba `Usuarios`, adicione o e-mail Gmail, o nome e `SIM` na coluna Ativo. Para bloquear, troque para `NÃO`.
+- **Login só uma vez por aparelho:** no primeiro acesso a pessoa entra com o Google; a planilha libera aquele celular com uma chave permanente e o login não é mais pedido. Cada celular liberado aparece na aba `Aparelhos` (e-mail, tipo de aparelho, data e último uso). Celular perdido ou pessoa que saiu: troque `Ativo` para `NÃO` naquela linha. Tirar a pessoa da aba `Usuarios` bloqueia todos os aparelhos dela. Não edite a coluna oculta "Resumo da chave".
 - **Sugestão do pai:** na aba `Reproducao`, lance *Mãe, Data da IA/IATF, Touro, Tipo*. Ao digitar a mãe no app, ele sugere o touro e calcula os dias de gestação quando o parto cai entre 240 e 320 dias após a IA. Se não houver IA compatível, aparece “Monta natural”, que pode ser editado.
 - **Sem sinal:** o selo no topo mostra “X pendentes”. O envio é automático quando o sinal volta, ao abrir o app e a cada 2 minutos. Também dá para tocar em **Sincronizar**.
 - **Várias pessoas ao mesmo tempo:** cada registro tem um código único, então não há duplicação. Se duas pessoas editarem o mesmo registro, vale a edição mais recente.

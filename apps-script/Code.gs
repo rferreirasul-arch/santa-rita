@@ -10,6 +10,11 @@ const CLIENT_ID = "997988874349-65tdu4nmrtj1p4sgg291ftg4b1dfna7i.apps.googleuser
 const ABA_REGISTROS = "Nascimentos";
 const ABA_USUARIOS = "Usuarios";
 const ABA_REPRODUCAO = "Reproducao";
+const ABA_APARELHOS = "Aparelhos";
+
+// Aba Aparelhos: um aparelho liberado por linha. A chave fica só no celular;
+// aqui guardamos apenas o "resumo" dela (coluna oculta), que não serve para entrar.
+const CABECALHO_APARELHOS = ["Código", "E-mail", "Nome", "Aparelho", "Liberado em", "Último uso", "Ativo (SIM/NÃO)", "Resumo da chave (não editar)"];
 
 const COLUNAS = [
   "id", "data", "mae", "pai", "sexo", "situacao", "peso", "brinco", "gestacao", "obs",
@@ -67,10 +72,17 @@ function doPost(e) {
   let saida;
   try {
     const req = JSON.parse(e.postData.contents);
-    const usuario = verificarUsuario_(req.token);
-    if (req.action === "ping") saida = { ok: true, usuario: usuario };
-    else if (req.action === "sync") saida = sincronizar_(req.registros || [], usuario);
-    else throw erro_("Ação desconhecida.", "ACAO");
+    if (req.action === "registrar") {
+      // Primeiro acesso no aparelho: login Google confere o e-mail e libera uma chave permanente
+      const u = verificarUsuario_(req.token);
+      saida = { ok: true, usuario: u, chave: registrarAparelho_(u, req.aparelho) };
+    } else {
+      const usuario = req.chave ? verificarAparelho_(req.chave) : verificarUsuario_(req.token);
+      if (req.action === "ping") saida = { ok: true, usuario: usuario };
+      else if (req.action === "sync") saida = sincronizar_(req.registros || [], usuario);
+      else if (req.action === "sair") { desativarAparelho_(req.chave); saida = { ok: true }; }
+      else throw erro_("Ação desconhecida.", "ACAO");
+    }
   } catch (err) {
     saida = { ok: false, erro: String(err.message || err), codigo: err.codigo || "ERRO" };
   }
@@ -107,6 +119,65 @@ function verificarUsuario_(token) {
   const aut = usuariosAutorizados_()[email];
   if (!aut) throw erro_("O e-mail " + email + " não está autorizado. Peça ao administrador para incluí-lo na aba Usuarios.", "NEGADO");
   return { email: email, nome: aut.nome || email };
+}
+
+// ---------------------------------------------------------------------
+// Aparelhos liberados (chave permanente por celular)
+// ---------------------------------------------------------------------
+function abaAparelhos_() {
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(ABA_APARELHOS);
+  if (!sh) {
+    sh = ss.insertSheet(ABA_APARELHOS);
+    sh.getRange(1, 1, 1, CABECALHO_APARELHOS.length).setValues([CABECALHO_APARELHOS]).setFontWeight("bold");
+    sh.setFrozenRows(1);
+    sh.hideColumns(CABECALHO_APARELHOS.length);
+  }
+  return sh;
+}
+
+// Começa com "k" para a planilha nunca confundir o texto com fórmula ou número
+function resumo_(chave) {
+  return "k" + Utilities.base64EncodeWebSafe(
+    Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(chave))).replace(/=+$/, "");
+}
+
+function registrarAparelho_(usuario, aparelho) {
+  const chave = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, "");
+  const r = resumo_(chave);
+  const agora = new Date();
+  abaAparelhos_().appendRow([r.slice(1, 7).toUpperCase(), usuario.email, usuario.nome,
+    String(aparelho || "").slice(0, 60), agora, agora, "SIM", r]);
+  return chave;
+}
+
+function linhaAparelho_(sh, chave) {
+  const n = sh.getLastRow() - 1;
+  if (n < 1) return null;
+  const r = resumo_(chave);
+  const col = sh.getRange(2, CABECALHO_APARELHOS.length, n, 1).getValues();
+  for (let i = 0; i < n; i++) if (col[i][0] === r) return i + 2;
+  return null;
+}
+
+function verificarAparelho_(chave) {
+  const sh = abaAparelhos_();
+  const linha = linhaAparelho_(sh, chave);
+  if (!linha) throw erro_("Este aparelho não está liberado. Entre com o Google para liberá-lo.", "APARELHO");
+  const l = sh.getRange(linha, 1, 1, CABECALHO_APARELHOS.length).getValues()[0];
+  const ativo = String(l[6]).trim().toUpperCase();
+  if (ativo === "NÃO" || ativo === "NAO") throw erro_("Este aparelho foi bloqueado. Entre com o Google para liberá-lo de novo.", "APARELHO");
+  const email = String(l[1]).trim().toLowerCase();
+  const aut = usuariosAutorizados_()[email];
+  if (!aut) throw erro_("O e-mail " + email + " não está autorizado. Peça ao administrador para incluí-lo na aba Usuarios.", "NEGADO");
+  sh.getRange(linha, 6).setValue(new Date());
+  return { email: email, nome: aut.nome || email };
+}
+
+function desativarAparelho_(chave) {
+  const sh = abaAparelhos_();
+  const linha = linhaAparelho_(sh, chave);
+  if (linha) sh.getRange(linha, 7).setValue("NÃO");
 }
 
 function usuariosAutorizados_() {
