@@ -78,17 +78,24 @@
               <button type="button" class="btn-teclado" data-alvo="mae" aria-label="Trocar para letras">ABC</button>
             </div>
           </label>
+          <p id="aviso" class="aviso full" hidden></p>
 
           <label class="field full">
-            <span>Pai <small>(sugerido pela IATF/última IA: edite se for monta natural)</small></span>
-            <input type="text" name="pai" placeholder="Preenchido ao digitar a mãe" list="lista-pais">
+            <span>Pai <small>(IA = touro da IATF/última IA · MN = monta natural)</small></span>
+            <div class="campo-pai">
+              <input type="text" name="pai" placeholder="Preenchido ao digitar a mãe" list="lista-pais" autocomplete="off">
+              <div class="btns-pai" role="group" aria-label="Origem do pai">
+                <button type="button" class="btn-pai" data-pai="IA">IA</button>
+                <button type="button" class="btn-pai" data-pai="MN">MN</button>
+              </div>
+            </div>
             <datalist id="lista-pais"></datalist>
             <small id="dica-pai" class="dica"></small>
           </label>
 
           <label class="field">
-            <span>Gestação da última IA <small>(dias)</small></span>
-            <input type="number" name="gest_ult" placeholder="Calculada ao digitar a mãe" inputmode="numeric" min="0" max="400">
+            <span>Gestação <small>(dias)</small></span>
+            <input type="number" name="gestacao" placeholder="Em branco se monta natural" inputmode="numeric" min="0" max="400">
           </label>
           <div class="field">
             <span>Gêmeos?</span>
@@ -170,7 +177,6 @@
           </label>
         </div>
 
-        <p id="aviso" class="aviso" hidden></p>
         <div class="actions">
           <button type="submit" class="btn-primary" id="btn-salvar">Salvar registro</button>
         </div>

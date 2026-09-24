@@ -281,15 +281,38 @@ function sugestaoReproducao(mae, dataNasc) {
   return { ...s, gestacao: s.base ? diasEntre(s.base, dataNasc) : "", gestUlt, dataUlt: ult, touroUlt };
 }
 
-function aoMudarMae() {
-  const sug = sugestaoReproducao(campo("mae").value, campo("data").value);
+// Pai: botão IA (touro pela regra da IATF/última IA) ou MN (monta natural).
+// MN deixa a gestação em branco. Digitar o pai à mão desmarca os dois botões.
+const MN = "Monta natural";
+const ehMN = (v) => /^\s*monta\s+natural\s*$/i.test(v || "");
+let sugAtual = null;
+
+function marcarBotaoPai(modo) {
+  $$(".btn-pai").forEach((b) => b.classList.toggle("on", b.dataset.pai === modo));
+}
+
+function escolherPai(modo) {
   const pai = campo("pai");
-  const gUlt = campo("gest_ult");
-  form().dataset.gestacao = sug?.gestacao ?? "";
-  if (pai.dataset.manual !== "1") pai.value = sug ? sug.pai : (campo("mae").value.trim() ? "Monta natural" : "");
-  if (gUlt.dataset.manual !== "1") gUlt.value = sug?.gestUlt ?? "";
+  if (modo === "IA" && !sugAtual) { toast("Esta vaca não tem IA registrada na aba Reproducao."); return; }
+  pai.value = modo === "IA" ? sugAtual.pai : MN;
+  campo("gestacao").value = modo === "IA" ? sugAtual.gestacao : "";
+  pai.dataset.manual = "1";
+  marcarBotaoPai(modo);
+}
+
+function aoMudarMae() {
+  const sug = sugAtual = sugestaoReproducao(campo("mae").value, campo("data").value);
+  form().dataset.gestUlt = sug?.gestUlt ?? "";
+  if (campo("pai").dataset.manual !== "1") {
+    if (!campo("mae").value.trim()) { campo("pai").value = ""; campo("gestacao").value = ""; marcarBotaoPai(""); }
+    else {
+      // Mais de 300 dias desde a última IA (ou sem IA): já vem como monta natural
+      escolherPai(sug && !(sug.gestUlt > 300) ? "IA" : "MN");
+      campo("pai").dataset.manual = "";
+    }
+  }
   $("#dica-pai").textContent = sug
-    ? `${sug.origem}${sug.gestacao !== "" ? ` · ${sug.gestacao} dias` : ""} · última IA: ${fmtData(sug.dataUlt)} (${sug.touroUlt})`
+    ? `${sug.origem} · última IA: ${fmtData(sug.dataUlt)} · ${sug.gestUlt} dias · touro ${sug.touroUlt}`
     : (campo("mae").value.trim() ? "Vaca sem IA registrada na aba Reproducao." : "");
   avisoDuplicado();
 }
@@ -323,8 +346,9 @@ function limparForm() {
   form().reset();
   campo("data").value = hojeISO();
   campo("pai").dataset.manual = "";
-  campo("gest_ult").dataset.manual = "";
-  form().dataset.gestacao = "";
+  form().dataset.gestUlt = "";
+  sugAtual = null;
+  marcarBotaoPai("");
   marcarSeg("seg-sexo", "Não sei");
   marcarSeg("seg-sexo2", "Não sei");
   marcarSeg("seg-gemeo", "Não");
@@ -342,10 +366,11 @@ function editar(id) {
   if (!r) return;
   limparForm();
   editId = id;
-  for (const k of ["data", "mae", "pai", "situacao", "peso", "brinco", "gest_ult", "obs"]) campo(k).value = r[k] ?? "";
+  for (const k of ["data", "mae", "pai", "situacao", "peso", "brinco", "gestacao", "obs"]) campo(k).value = r[k] ?? "";
   campo("pai").dataset.manual = "1";
-  campo("gest_ult").dataset.manual = "1";
-  form().dataset.gestacao = r.gestacao ?? "";
+  form().dataset.gestUlt = r.gest_ult ?? "";
+  sugAtual = sugestaoReproducao(r.mae, r.data);
+  marcarBotaoPai(ehMN(r.pai) ? "MN" : sugAtual && r.pai === sugAtual.pai ? "IA" : "");
   marcarSeg("seg-sexo", r.sexo || "Não sei");
   marcarSeg("seg-gemeo", r.gemeo === "Sim" ? "Sim" : "Não");
   $("#form-titulo").textContent = `Editando parto da mãe ${r.mae}`;
@@ -388,8 +413,8 @@ async function salvar(ev) {
     situacao: campo("situacao").value,
     peso,
     brinco: campo("brinco").value.trim(),
-    gestacao: f.dataset.gestacao ? Number(f.dataset.gestacao) : "",
-    gest_ult: campo("gest_ult").value ? Number(campo("gest_ult").value) : "",
+    gestacao: campo("gestacao").value && !ehMN(campo("pai").value) ? Number(campo("gestacao").value) : "",
+    gest_ult: f.dataset.gestUlt !== "" && f.dataset.gestUlt != null ? Number(f.dataset.gestUlt) : "",
     gemeo,
     obs: campo("obs").value.trim(),
     registrado_por: antigo?.registrado_por || usuario?.email || "demo",
@@ -591,12 +616,20 @@ function entrarNoApp() {
 
 function ligarEventos() {
   form().addEventListener("submit", salvar);
-  campo("mae").addEventListener("input", aoMudarMae);
+  campo("mae").addEventListener("input", () => { campo("pai").dataset.manual = ""; aoMudarMae(); });
   campo("data").addEventListener("change", aoMudarMae);
-  campo("pai").addEventListener("input", () => (campo("pai").dataset.manual = campo("pai").value ? "1" : ""));
+  campo("pai").addEventListener("input", () => {
+    const v = campo("pai").value;
+    campo("pai").dataset.manual = v ? "1" : "";
+    marcarBotaoPai(ehMN(v) ? "MN" : sugAtual && v === sugAtual.pai ? "IA" : "");
+    if (ehMN(v)) campo("gestacao").value = "";
+  });
+  $$(".btn-pai").forEach((b) => {
+    b.addEventListener("pointerdown", (e) => e.preventDefault());
+    b.addEventListener("click", () => escolherPai(b.dataset.pai));
+  });
   ["seg-sexo", "seg-sexo2", "seg-gemeo"].forEach((id) =>
     $(`#${id}`).addEventListener("click", (e) => e.target.dataset.v && marcarSeg(id, e.target.dataset.v)));
-  campo("gest_ult").addEventListener("input", () => (campo("gest_ult").dataset.manual = campo("gest_ult").value ? "1" : ""));
   $("#btn-cancelar").addEventListener("click", limparForm);
   $$(".btn-teclado").forEach((b) => {
     b.addEventListener("pointerdown", (e) => e.preventDefault()); // não fecha o teclado ao tocar

@@ -155,7 +155,15 @@ input.erro { border-color: var(--perda); background: #fff5f4; }
 .seg button { border: 0; background: transparent; border-radius: 8px; font-weight: 600; color: var(--muted); }
 .seg button.on { background: var(--primary); color: #fff; }
 
-.aviso { background: var(--enx-bg); color: #6b4108; padding: 10px 12px; border-radius: 10px; margin: 14px 0 0; font-size: .95rem; }
+.aviso { background: var(--enx-bg); color: #6b4108; padding: 10px 12px; border-radius: 10px; margin: 0; font-size: .95rem; }
+.campo-pai { position: relative; }
+.campo-pai input { padding-right: 106px; }
+.btns-pai { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); display: flex; gap: 5px; }
+.btn-pai {
+  min-width: 44px; height: 34px; border: 1px solid var(--line); border-radius: 8px;
+  background: #fff; color: var(--primary); font-weight: 700; font-size: .85rem;
+}
+.btn-pai.on { background: var(--primary); border-color: var(--primary); color: #fff; }
 .actions { display: flex; justify-content: flex-end; margin-top: 16px; }
 .btn-primary {
   background: var(--primary); color: #fff; border: 0; border-radius: 10px;
