@@ -573,6 +573,8 @@ function renderPainel() {
     if (Number(r.peso) > 0) g.pesos.push(Number(r.peso));
     if (Number(r.gestacao) > 0) g.gest.push(Number(r.gestacao));
   });
+  renderHistograma(comPeso);
+
   const media = (a, c = 1) => (a.length ? fmtNum(a.reduce((s, x) => s + x, 0) / a.length, c) : "–");
   const linhas = Object.entries(pais).sort((a, b) => b[1].n - a[1].n);
   $("#t-pai").innerHTML = linhas.length ? `
@@ -582,6 +584,52 @@ function renderPainel() {
         <tr><td>${esc(p)}</td><td class="n">${g.n}</td><td class="n">${pct(g.vivos, g.n)}</td><td class="n">${g.femeas} / ${g.machos}</td><td class="n">${media(g.pesos)}</td><td class="n">${media(g.gest, 0)}</td></tr>`).join("")}
       </tbody>
     </table>` : `<p class="vazio">Sem registros no período.</p>`;
+}
+
+// Histograma do peso ao nascer: faixas de mesma largura (1, 2, 5 ou 10 kg),
+// escolhida para caber em no máximo 16 barras
+function renderHistograma(comPeso) {
+  const pesos = comPeso.map((r) => Number(r.peso)).sort((x, y) => x - y);
+  const alvo = $("#g-peso");
+  if (!pesos.length) {
+    $("#h-resumo").textContent = "";
+    alvo.innerHTML = `<p class="vazio">Nenhum terneiro pesado no período.</p>`;
+    $("#h-info").hidden = true;
+    return;
+  }
+  const media = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+  const meio = Math.floor(pesos.length / 2);
+  const mediana = pesos.length % 2 ? pesos[meio] : (pesos[meio - 1] + pesos[meio]) / 2;
+  const porSexo = (sx) => comPeso.filter((r) => r.sexo === sx).map((r) => Number(r.peso));
+  const [fem, mac] = [porSexo("Fêmea"), porSexo("Macho")];
+  $("#h-resumo").textContent = [
+    `${pesos.length} pesados`,
+    `média ${fmtNum(media(pesos), 1)} kg`,
+    `mediana ${fmtNum(mediana, 1)} kg`,
+    `de ${fmtNum(pesos[0], pesos[0] % 1 ? 1 : 0)} a ${fmtNum(pesos.at(-1), pesos.at(-1) % 1 ? 1 : 0)} kg`,
+    fem.length ? `fêmeas ${fmtNum(media(fem), 1)} kg` : "",
+    mac.length ? `machos ${fmtNum(media(mac), 1)} kg` : "",
+  ].filter(Boolean).join(" · ");
+
+  const min = pesos[0], max = pesos.at(-1);
+  const passo = [1, 2, 5, 10].find((p) => (max - min) / p < 16) || 10;
+  const ini = Math.floor(min / passo) * passo;
+  const nFaixas = Math.floor((max - ini) / passo) + 1;
+  const cont = Array(nFaixas).fill(0);
+  pesos.forEach((p) => cont[Math.floor((p - ini) / passo)]++);
+  const maior = Math.max(...cont);
+  const inteiros = pesos.every((p) => p % 1 === 0);
+  const faixa = (i) => {
+    const a = ini + i * passo;
+    return passo === 1 ? `${a} kg` : inteiros ? `${a}–${a + passo - 1} kg` : `${a} a ${a + passo} kg`;
+  };
+  const rotuloACada = nFaixas > 10 ? 2 : 1;
+  alvo.innerHTML = cont.map((n, i) => {
+    const info = `${faixa(i)}: ${n} terneiro${n === 1 ? "" : "s"} (${fmtNum((n / pesos.length) * 100, 0)}%)`;
+    return `<button type="button" class="col" data-info="${info}" aria-label="${info}">${n ? `<em>${n}</em>` : ""}<i style="height:${(n / maior) * 100}%"></i><span>${i % rotuloACada ? "" : ini + i * passo}</span></button>`;
+  }).join("");
+  $("#h-info").hidden = false;
+  $("#h-info").textContent = "Toque numa barra para ver a faixa.";
 }
 
 // =====================================================================
@@ -642,6 +690,12 @@ function ligarEventos() {
   $$(".tabbar button").forEach((b) => b.addEventListener("click", () => mostrarAba(b.dataset.tab)));
   ["#busca", "#f-situacao", "#f-sexo", "#f-ano"].forEach((s) =>
     $(s).addEventListener("input", () => { limiteLista = 60; renderListas(); }));
+  $("#g-peso").addEventListener("click", (e) => {
+    const b = e.target.closest(".col");
+    if (!b) return;
+    $$("#g-peso .col").forEach((c) => c.classList.toggle("sel", c === b));
+    $("#h-info").textContent = b.dataset.info;
+  });
   $("#p-ano").addEventListener("change", () => { $("#p-ano").dataset.escolhido = "1"; renderPainel(); });
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-editar],[data-excluir]");

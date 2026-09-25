@@ -230,6 +230,13 @@ input.erro { border-color: var(--perda); background: #fff5f4; }
 .col i { display: block; width: 100%; max-width: 30px; background: var(--primary); border-radius: 4px 4px 0 0; min-height: 2px; }
 .col em { font-style: normal; font-size: .75rem; font-weight: 700; margin-bottom: 3px; }
 .col span { font-size: .72rem; color: var(--muted); margin-top: 5px; }
+.hist { gap: 2px; height: 190px; }
+.hist .col { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+.hist .col i { max-width: none; }
+.hist .col.sel i { background: var(--rust); }
+.hist .col span { white-space: nowrap; }
+.h-info { margin: 10px 0 0; font-size: .9rem; font-weight: 600; color: var(--ink); }
+#h-resumo { margin-top: -4px; }
 .barras { display: flex; flex-direction: column; gap: 10px; }
 .barra { display: grid; grid-template-columns: 130px 1fr 42px; align-items: center; gap: 8px; font-size: .92rem; }
 .barra .trilho { background: var(--field); border-radius: 6px; height: 14px; overflow: hidden; }
