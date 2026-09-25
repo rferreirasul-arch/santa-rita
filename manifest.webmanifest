@@ -1,6 +1,6 @@
 {
-  "name": "Fazenda Santa Rita — Caderno de Campo",
-  "short_name": "Santa Rita",
+  "name": "Santa Rita Nascimentos",
+  "short_name": "Nascimentos",
   "description": "Registro de nascimentos e eventos do rebanho, com funcionamento sem sinal.",
   "lang": "pt-BR",
   "start_url": "./",
