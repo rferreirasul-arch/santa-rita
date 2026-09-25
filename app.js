@@ -623,11 +623,15 @@ function renderHistograma(comPeso) {
     const a = ini + i * passo;
     return passo === 1 ? `${a} kg` : inteiros ? `${a}–${a + passo - 1} kg` : `${a} a ${a + passo} kg`;
   };
-  const rotuloACada = nFaixas > 10 ? 2 : 1;
-  alvo.innerHTML = cont.map((n, i) => {
+  // Eixo X: valores nas divisas das faixas (25, 30, 35…), um a cada dois se forem muitas
+  const cadaDivisa = nFaixas > 12 ? 2 : 1;
+  const barras = cont.map((n, i) => {
     const info = `${faixa(i)}: ${n} terneiro${n === 1 ? "" : "s"} (${fmtNum((n / pesos.length) * 100, 0)}%)`;
-    return `<button type="button" class="col" data-info="${info}" aria-label="${info}">${n ? `<em>${n}</em>` : ""}<i style="height:${(n / maior) * 100}%"></i><span>${i % rotuloACada ? "" : ini + i * passo}</span></button>`;
+    return `<button type="button" class="col" data-info="${info}" aria-label="${info}">${n ? `<em>${n}</em>` : ""}<i style="height:${(n / maior) * 100}%"></i></button>`;
   }).join("");
+  const divisas = Array.from({ length: nFaixas + 1 }, (_, i) =>
+    i % cadaDivisa ? "" : `<span style="left:${(i / nFaixas) * 100}%">${ini + i * passo}</span>`).join("");
+  alvo.innerHTML = `<div class="hist-barras">${barras}</div><div class="hist-eixo">${divisas}</div><div class="hist-titulo">Peso ao nascer (kg)</div>`;
   $("#h-info").hidden = false;
   $("#h-info").textContent = "Toque numa barra para ver a faixa.";
 }

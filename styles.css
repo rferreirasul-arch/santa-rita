@@ -230,11 +230,17 @@ input.erro { border-color: var(--perda); background: #fff5f4; }
 .col i { display: block; width: 100%; max-width: 30px; background: var(--primary); border-radius: 4px 4px 0 0; min-height: 2px; }
 .col em { font-style: normal; font-size: .75rem; font-weight: 700; margin-bottom: 3px; }
 .col span { font-size: .72rem; color: var(--muted); margin-top: 5px; }
-.hist { gap: 2px; height: 190px; }
-.hist .col { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
-.hist .col i { max-width: none; }
+.hist { padding: 0 12px; }
+.hist-barras { display: flex; align-items: flex-end; gap: 2px; height: 180px; padding-top: 20px; border-bottom: 2px solid var(--muted); }
+.hist .col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0;
+  background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+.hist .col i { display: block; width: 100%; max-width: none; min-height: 0; background: var(--primary); border-radius: 4px 4px 0 0; }
+.hist .col em { font-style: normal; font-size: .75rem; font-weight: 700; margin-bottom: 3px; }
 .hist .col.sel i { background: var(--rust); }
-.hist .col span { white-space: nowrap; }
+.hist-eixo { position: relative; height: 24px; }
+.hist-eixo span { position: absolute; top: 0; transform: translateX(-50%); padding-top: 6px; font-size: .75rem; color: var(--muted); white-space: nowrap; }
+.hist-eixo span::before { content: ""; position: absolute; top: 0; left: 50%; width: 1px; height: 5px; background: var(--muted); }
+.hist-titulo { text-align: center; font-size: .78rem; color: var(--muted); margin-top: 2px; }
 .h-info { margin: 10px 0 0; font-size: .9rem; font-weight: 600; color: var(--ink); }
 #h-resumo { margin-top: -4px; }
 .barras { display: flex; flex-direction: column; gap: 10px; }
